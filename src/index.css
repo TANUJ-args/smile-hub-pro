@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Medical/Dental Professional Theme - Teal/Cyan Focus */
+    --background: 0 0% 100%;
+    --foreground: 221 39% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 221 39% 11%;
+    --card-glass: 0 0% 100%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 39% 11%;
+
+    /* Primary - Professional Teal */
+    --primary: 185 62% 45%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 185 62% 55%;
+    --primary-dark: 185 62% 35%;
+
+    /* Secondary - Cool Gray */
+    --secondary: 215 25% 27%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 215 20% 35%;
+
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent - Warm Coral */
+    --accent: 16 75% 58%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 16 75% 68%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 185 30% 89%;
+    --input: 185 30% 89%;
+    --ring: 185 62% 45%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 221 39% 11%;
+    --sidebar-primary: 185 62% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 185 30% 95%;
+    --sidebar-accent-foreground: 221 39% 11%;
+    --sidebar-border: 185 30% 89%;
+    --sidebar-ring: 185 62% 45%;
+
+    /* Fonts */
+    --font-heading: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(185 62% 45%), hsl(185 62% 55%));
+    --gradient-secondary: linear-gradient(135deg, hsl(215 25% 27%), hsl(215 20% 35%));
+    --gradient-accent: linear-gradient(135deg, hsl(16 75% 58%), hsl(16 75% 68%));
+    --gradient-hero: linear-gradient(135deg, hsl(185 62% 45%), hsl(195 80% 50%));
+    --gradient-card: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+    --gradient-radial: radial-gradient(circle at 30% 20%, hsl(185 62% 45% / 0.1), transparent 70%);
+
+    /* Shadows */
+    --shadow-glow: 0 0 40px hsl(185 62% 45% / 0.3);
+    --shadow-card: 0 10px 40px hsl(221 39% 11% / 0.08);
+    --shadow-hover: 0 20px 60px hsl(221 39% 11% / 0.15);
+    --shadow-elegant: 0 4px 20px hsl(221 39% 11% / 0.1);
+  }
+
+  .dark {
+    /* Dark mode - Deep Blue Medical Theme */
+    --background: 221 39% 7%;
+    --foreground: 0 0% 95%;
+
+    --card: 221 39% 11%;
+    --card-foreground: 0 0% 95%;
+    --card-glass: 221 39% 11% / 0.7;
+
+    --popover: 221 39% 11%;
+    --popover-foreground: 0 0% 95%;
+
+    /* Primary - Bright Teal */
+    --primary: 185 62% 50%;
+    --primary-foreground: 221 39% 11%;
+    --primary-light: 185 62% 60%;
+    --primary-dark: 185 62% 40%;
+
+    /* Secondary - Light Blue */
+    --secondary: 210 40% 70%;
+    --secondary-foreground: 221 39% 11%;
+    --secondary-light: 210 40% 80%;
+
+    --muted: 221 39% 20%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Accent - Soft Coral */
+    --accent: 16 75% 62%;
+    --accent-foreground: 221 39% 11%;
+    --accent-light: 16 75% 72%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 221 39% 20%;
+    --input: 221 39% 20%;
+    --ring: 185 62% 50%;
+
+    /* Sidebar Dark */
+    --sidebar-background: 221 39% 9%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 185 62% 50%;
+    --sidebar-primary-foreground: 221 39% 11%;
+    --sidebar-accent: 221 39% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 221 39% 20%;
+    --sidebar-ring: 185 62% 50%;
+
+    /* Dark Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(185 62% 50%), hsl(185 62% 60%));
+    --gradient-secondary: linear-gradient(135deg, hsl(210 40% 70%), hsl(210 40% 80%));
+    --gradient-accent: linear-gradient(135deg, hsl(16 75% 62%), hsl(16 75% 72%));
+    --gradient-hero: linear-gradient(135deg, hsl(185 62% 50%), hsl(195 80% 55%));
+    --gradient-card: linear-gradient(135deg, hsl(221 39% 11% / 0.9), hsl(221 39% 11% / 0.7));
+    --gradient-radial: radial-gradient(circle at 30% 20%, hsl(185 62% 50% / 0.15), transparent 70%);
+
+    /* Dark Shadows */
+    --shadow-glow: 0 0 40px hsl(185 62% 50% / 0.4);
+    --shadow-card: 0 10px 40px hsl(0 0% 0% / 0.3);
+    --shadow-hover: 0 20px 60px hsl(0 0% 0% / 0.4);
+    --shadow-elegant: 0 4px 20px hsl(0 0% 0% / 0.2);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
