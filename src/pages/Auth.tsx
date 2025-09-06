@@ -15,7 +15,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Lock, User, Eye, EyeOff, Sparkles, Heart, Shield, Zap, ArrowLeft, Home, Users } from 'lucide-react';
 import logoMain from '@/assets/smile-hub-logo.svg';
-import { API_ENDPOINTS } from '@/lib/api';
+
+// API Configuration
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://smilehub-pro-backend.onrender.com' 
+  : '';
+
+const API_ENDPOINTS = {
+  LOGIN: `${API_BASE_URL}/api/login`,
+  REGISTER: `${API_BASE_URL}/api/register`,
+};
 
 export default function Auth() {
   const [loginEmail, setLoginEmail] = useState('');

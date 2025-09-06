@@ -7,7 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactCrop, { type Crop as CropType } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { API_ENDPOINTS } from '@/lib/api';
+
+// API Configuration
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://smilehub-pro-backend.onrender.com' 
+  : '';
+
+const API_ENDPOINTS = {
+  PATIENTS: `${API_BASE_URL}/api/patients`,
+};
 import { 
   Phone, 
   Mail, 

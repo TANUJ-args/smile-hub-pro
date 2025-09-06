@@ -12,7 +12,15 @@ import { UserPlus, Search, Filter, Eye, Edit, Trash2, Image, DollarSign, Calenda
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
-import { API_ENDPOINTS } from '@/lib/api';
+
+// API Configuration
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://smilehub-pro-backend.onrender.com' 
+  : '';
+
+const API_ENDPOINTS = {
+  PATIENTS: `${API_BASE_URL}/api/patients`,
+};
 import {
   Table,
   TableBody,
