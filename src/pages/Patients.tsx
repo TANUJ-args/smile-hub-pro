@@ -12,6 +12,7 @@ import { UserPlus, Search, Filter, Eye, Edit, Trash2, Image, DollarSign, Calenda
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { API_ENDPOINTS } from '@/lib/api';
 import {
   Table,
   TableBody,
@@ -94,7 +95,7 @@ const Patients = () => {
     const fetchPatients = async () => {
       if (!token) return;
       try {
-        const response = await fetch('/api/patients', {
+        const response = await fetch(API_ENDPOINTS.PATIENTS, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -151,7 +152,7 @@ const Patients = () => {
       };
 
       if (editingPatient) {
-        response = await fetch(`/api/patients/${patientData.id}`, {
+        response = await fetch(`${API_ENDPOINTS.PATIENTS}/${patientData.id}`, {
           method: 'PUT',
           headers: { 
             'Content-Type': 'application/json',
@@ -175,7 +176,7 @@ const Patients = () => {
         setEditingPatient(null);
 
       } else {
-        response = await fetch('/api/patients', {
+        response = await fetch(API_ENDPOINTS.PATIENTS, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -221,7 +222,7 @@ const Patients = () => {
   const handleDelete = async (id: number) => {
     if (!token) return;
     try {
-      const response = await fetch(`/api/patients/${id}`, {
+      const response = await fetch(`${API_ENDPOINTS.PATIENTS}/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -269,7 +270,7 @@ const Patients = () => {
   const handlePatientUpdate = async () => {
     if (!token) return;
     try {
-      const response = await fetch('/api/patients', {
+      const response = await fetch(API_ENDPOINTS.PATIENTS, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -322,7 +323,7 @@ const Patients = () => {
           payments: original.payments
         };
 
-        const response = await fetch(`/api/patients/${patientId}`, {
+        const response = await fetch(`${API_ENDPOINTS.PATIENTS}/${patientId}`, {
           method: 'PUT',
           headers: { 
             'Content-Type': 'application/json',

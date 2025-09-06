@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactCrop, { type Crop as CropType } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { API_ENDPOINTS } from '@/lib/api';
 import { 
   Phone, 
   Mail, 
@@ -168,7 +169,7 @@ export default function PatientDetails({ patient, open, onClose, onEdit, onRever
           
           try {
             // Call backend API to update the image
-            const response = await fetch(`/api/patients/${patient.id}/images/${selectedImage}`, {
+            const response = await fetch(`${API_ENDPOINTS.PATIENTS}/${patient.id}/images/${selectedImage}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -237,7 +238,7 @@ export default function PatientDetails({ patient, open, onClose, onEdit, onRever
 
     try {
       // Call backend API to delete the image
-      const response = await fetch(`/api/patients/${patient.id}/images/${imageIndex}`, {
+      const response = await fetch(`${API_ENDPOINTS.PATIENTS}/${patient.id}/images/${imageIndex}`, {
         method: 'DELETE',
       });
 

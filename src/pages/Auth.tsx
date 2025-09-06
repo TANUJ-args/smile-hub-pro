@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Lock, User, Eye, EyeOff, Sparkles, Heart, Shield, Zap, ArrowLeft, Home, Users } from 'lucide-react';
 import logoMain from '@/assets/smile-hub-logo.svg';
+import { API_ENDPOINTS } from '@/lib/api';
 
 export default function Auth() {
   const [loginEmail, setLoginEmail] = useState('');
@@ -33,7 +34,7 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch(API_ENDPOINTS.LOGIN, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
@@ -72,7 +73,7 @@ export default function Auth() {
     }
 
     try {
-      const response = await fetch('/api/register', {
+      const response = await fetch(API_ENDPOINTS.REGISTER, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: registerEmail, password: registerPassword }),
