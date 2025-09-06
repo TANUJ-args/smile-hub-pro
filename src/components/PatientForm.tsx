@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,12 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { X, Upload, Calendar, Plus, Trash2, CreditCard, Banknote, Smartphone, Building } from 'lucide-react';
+import { X, Upload, Calendar, Plus, Trash2, CreditCard, Banknote, Smartphone, Building, Scissors } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 interface Payment {
   id: string;
@@ -22,15 +24,18 @@ interface Payment {
 }
 
 interface PatientData {
-  id: string;
+  id: number;
   name: string;
+  surname: string;
+  gender: string;
   mobile: string;
-  email: string;
+  age: number;
   treatmentType: string;
-  description: string;
+  chiefComplaint: string;   // renamed from description
+  diagnosis: string;        // new field
+  treatmentPlan: string;    // new field
   startDate: Date | undefined;
   totalFee: number;
-  paidFee: number;
   images: string[];
   payments: Payment[];
   createdAt: Date;
@@ -44,23 +49,24 @@ interface PatientFormProps {
 }
 
 export default function PatientForm({ open, onClose, onSubmit, editingPatient }: PatientFormProps) {
-  const [formData, setFormData] = useState<Partial<PatientData>>(
-    editingPatient || {
-      name: '',
-      mobile: '',
-      email: '',
-      treatmentType: '',
-      description: '',
-      startDate: undefined,
-      totalFee: 0,
-      paidFee: 0,
-      images: [],
-      payments: []
-    }
-  );
+  const [formData, setFormData] = useState<Partial<PatientData>>({
+    name: '',
+    surname: '',
+    gender: '',
+    mobile: '',
+    age: 0,
+    treatmentType: '',
+    chiefComplaint: '',
+    diagnosis: '',
+    treatmentPlan: '',
+    startDate: undefined,
+    totalFee: 0,
+    images: [],
+    payments: []
+  });
   
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [previewImages, setPreviewImages] = useState<string[]>(editingPatient?.images || []);
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [newPayment, setNewPayment] = useState<Partial<Payment>>({
     amount: 0,
@@ -69,6 +75,41 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
     notes: ''
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Image cropping states
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [currentImageSrc, setCurrentImageSrc] = useState<string>('');
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(-1);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Initialize form data when editingPatient changes
+  useEffect(() => {
+    if (editingPatient) {
+      setFormData(editingPatient);
+      setPreviewImages(editingPatient.images || []);
+    } else {
+      // Reset to fresh form for new patient
+      setFormData({
+        name: '',
+        surname: '',
+        gender: '',
+        mobile: '',
+        age: 0,
+        treatmentType: '',
+        chiefComplaint: '',
+        diagnosis: '',
+        treatmentPlan: '',
+        startDate: undefined,
+        totalFee: 0,
+        images: [],
+        payments: []
+      });
+      setPreviewImages([]);
+      setImageFiles([]);
+    }
+  }, [editingPatient, open]);
 
   const treatmentTypes = [
     'General Checkup',
@@ -135,6 +176,91 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
     handleImageUpload(input);
   };
 
+  const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    const crop = centerCrop(
+      makeAspectCrop(
+        {
+          unit: '%',
+          width: 90,
+        },
+        1,
+        width,
+        height,
+      ),
+      width,
+      height,
+    );
+    setCrop(crop);
+  };
+
+  const cropImage = (imageSrc: string, imageIndex: number) => {
+    setCurrentImageSrc(imageSrc);
+    setCurrentImageIndex(imageIndex);
+    setShowCropDialog(true);
+  };
+
+  const getCroppedImg = (image: HTMLImageElement, crop: PixelCrop): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      throw new Error('No 2d context');
+    }
+
+    const scaleX = image.naturalWidth / image.width;
+    const scaleY = image.naturalHeight / image.height;
+
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+
+    ctx.drawImage(
+      image,
+      crop.x * scaleX,
+      crop.y * scaleY,
+      crop.width * scaleX,
+      crop.height * scaleY,
+      0,
+      0,
+      crop.width,
+      crop.height,
+    );
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          throw new Error('Canvas is empty');
+        }
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.95);
+    });
+  };
+
+  const handleCropComplete = async () => {
+    if (completedCrop && imgRef.current && currentImageIndex >= 0) {
+      try {
+        const croppedImageUrl = await getCroppedImg(imgRef.current, completedCrop);
+        const newPreviewImages = [...previewImages];
+        newPreviewImages[currentImageIndex] = croppedImageUrl;
+        setPreviewImages(newPreviewImages);
+        setShowCropDialog(false);
+        toast({
+          title: "Image cropped successfully",
+          description: "The image has been cropped and updated."
+        });
+      } catch (error) {
+        console.error('Error cropping image:', error);
+        toast({
+          title: "Cropping failed",
+          description: "There was an error cropping the image.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
   const removeImage = (index: number) => {
     setPreviewImages(prev => prev.filter((_, i) => i !== index));
     setImageFiles(prev => prev.filter((_, i) => i !== index));
@@ -185,23 +311,44 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
   };
 
   const calculateDue = () => {
-    const totalPaid = (formData.paidFee || 0) + 
-      (formData.payments?.reduce((sum, p) => sum + p.amount, 0) || 0);
+    const totalPaid = formData.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
     return (formData.totalFee || 0) - totalPaid;
   };
 
   const handleSubmit = () => {
-    // Validation
-    if (!formData.name || !formData.mobile || !formData.treatmentType) {
-      toast({
-        title: "Missing required fields",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
+    // Validation - more relaxed for editing mode
+    if (!editingPatient) {
+      // Stricter validation for new patients
+      if (!formData.name || !formData.mobile || !formData.treatmentType || !formData.startDate) {
+        toast({
+          title: "Missing required fields",
+          description: "Please fill in all required fields (Name, Mobile, Treatment Type, and Start Date)",
+          variant: "destructive"
+        });
+        return;
+      }
+    } else {
+      // Relaxed validation for editing - only check if values are provided
+      if (formData.name && formData.name.trim() === '') {
+        toast({
+          title: "Invalid name",
+          description: "Name cannot be empty if provided",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (formData.mobile && !/^[6-9]\d{9}$/.test(formData.mobile)) {
+        toast({
+          title: "Invalid mobile number",
+          description: "Enter 10-digit mobile number starting with 6, 7, 8, or 9",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
-    if (!/^[6-9]\d{9}$/.test(formData.mobile)) {
+    if (formData.mobile && !/^[6-9]\d{9}$/.test(formData.mobile)) {
       toast({
         title: "Invalid mobile number",
         description: "Enter 10-digit mobile number starting with 6, 7, 8, or 9",
@@ -211,17 +358,20 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
     }
 
     const patientData: PatientData = {
-      id: editingPatient?.id || Date.now().toString(),
-      name: formData.name,
-      mobile: formData.mobile,
-      email: formData.email || '',
-      treatmentType: formData.treatmentType,
-      description: formData.description || '',
-      startDate: formData.startDate,
-      totalFee: formData.totalFee || 0,
-      paidFee: formData.paidFee || 0,
-      images: previewImages,
-      payments: formData.payments || [],
+      id: editingPatient?.id || 0, // Use 0 for new patients, will be replaced by DB
+      name: formData.name !== undefined && formData.name !== '' ? formData.name : editingPatient?.name || '',
+      surname: formData.surname !== undefined ? formData.surname : editingPatient?.surname || '',
+      gender: formData.gender !== undefined ? formData.gender : editingPatient?.gender || '',
+      mobile: formData.mobile !== undefined && formData.mobile !== '' ? formData.mobile : editingPatient?.mobile || '',
+      age: formData.age !== undefined ? formData.age : editingPatient?.age || 0,
+      treatmentType: formData.treatmentType !== undefined && formData.treatmentType !== '' ? formData.treatmentType : editingPatient?.treatmentType || '',
+      chiefComplaint: formData.chiefComplaint !== undefined ? formData.chiefComplaint : editingPatient?.chiefComplaint || '',
+      diagnosis: formData.diagnosis !== undefined ? formData.diagnosis : editingPatient?.diagnosis || '',
+      treatmentPlan: formData.treatmentPlan !== undefined ? formData.treatmentPlan : editingPatient?.treatmentPlan || '',
+      startDate: formData.startDate !== undefined ? formData.startDate : editingPatient?.startDate,
+      totalFee: formData.totalFee !== undefined ? formData.totalFee : editingPatient?.totalFee || 0,
+      images: previewImages.length > 0 ? previewImages : editingPatient?.images || [],
+      payments: formData.payments || editingPatient?.payments || [],
       createdAt: editingPatient?.createdAt || new Date()
     };
 
@@ -245,23 +395,23 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
           {/* Basic Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">{editingPatient ? 'Name' : 'Name *'}</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Enter patient name"
+                placeholder={editingPatient ? (editingPatient.name || "Enter patient name") : "Enter patient name"}
                 className="bg-background/50"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="mobile">Mobile Number *</Label>
+              <Label htmlFor="mobile">{editingPatient ? 'Mobile Number' : 'Mobile Number *'}</Label>
               <Input
                 id="mobile"
                 value={formData.mobile}
                 onChange={(e) => setFormData(prev => ({ ...prev, mobile: e.target.value }))}
-                placeholder="10-digit number (6,7,8,9)"
+                placeholder={editingPatient ? (editingPatient.mobile || "10-digit number (6,7,8,9)") : "10-digit number (6,7,8,9)"}
                 maxLength={10}
                 className="bg-background/50"
               />
@@ -271,27 +421,56 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2 md:col-span-1">
+              <Label htmlFor="surname">Surname</Label>
+              <Input
+                id="surname"
+                value={formData.surname}
+                onChange={(e) => setFormData(prev => ({ ...prev, surname: e.target.value }))}
+                placeholder={editingPatient ? (editingPatient.surname || 'Enter patient surname') : "Enter patient surname"}
+                className="bg-background/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gender">Gender</Label>
+              <Select
+                value={formData.gender}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
+              >
+                <SelectTrigger className="bg-background/50">
+                  <SelectValue placeholder={editingPatient ? (editingPatient.gender || "Select gender") : "Select gender"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Male">Male</SelectItem>
+                  <SelectItem value="Female">Female</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="age">Age</Label>
               <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                placeholder="patient@example.com"
+                id="age"
+                type="number"
+                value={formData.age}
+                onChange={(e) => setFormData(prev => ({ ...prev, age: parseInt(e.target.value) || 0 }))}
+                placeholder={editingPatient ? (editingPatient.age?.toString() || "Patient age") : "Patient age"}
                 className="bg-background/50"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="treatment">Treatment Type *</Label>
+              <Label htmlFor="treatment">{editingPatient ? 'Treatment Type' : 'Treatment Type *'}</Label>
               <Select
                 value={formData.treatmentType}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, treatmentType: value }))}
               >
                 <SelectTrigger className="bg-background/50">
-                  <SelectValue placeholder="Select treatment type" />
+                  <SelectValue placeholder={editingPatient ? (editingPatient.treatmentType || "Select treatment type") : "Select treatment type"} />
                 </SelectTrigger>
                 <SelectContent>
                   {treatmentTypes.map(type => (
@@ -303,20 +482,42 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Patient Description</Label>
+            <Label htmlFor="chiefComplaint">Chief Complaint</Label>
             <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Enter patient history, symptoms, or notes..."
-              className="min-h-[100px] bg-background/50"
+              id="chiefComplaint"
+              value={formData.chiefComplaint}
+              onChange={(e) => setFormData(prev => ({ ...prev, chiefComplaint: e.target.value }))}
+              placeholder={editingPatient ? (editingPatient.chiefComplaint || "Enter patient's chief complaint...") : "Enter patient's chief complaint..."}
+              className="min-h-[80px] bg-background/50"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="diagnosis">Diagnosis</Label>
+            <Textarea
+              id="diagnosis"
+              value={formData.diagnosis}
+              onChange={(e) => setFormData(prev => ({ ...prev, diagnosis: e.target.value }))}
+              placeholder={editingPatient ? (editingPatient.diagnosis || "Clinical diagnosis...") : "Clinical diagnosis..."}
+              className="min-h-[80px] bg-background/50"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="treatmentPlan">Treatment Plan</Label>
+            <Textarea
+              id="treatmentPlan"
+              value={formData.treatmentPlan}
+              onChange={(e) => setFormData(prev => ({ ...prev, treatmentPlan: e.target.value }))}
+              placeholder={editingPatient ? (editingPatient.treatmentPlan || "Proposed treatment plan...") : "Proposed treatment plan..."}
+              className="min-h-[80px] bg-background/50"
             />
           </div>
 
           {/* Treatment Date and Fees */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Treatment Starting Date *</Label>
+              <Label>{editingPatient ? 'Treatment Starting Date' : 'Treatment Starting Date *'}</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -327,7 +528,12 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
                     )}
                   >
                     <Calendar className="mr-2 h-4 w-4" />
-                    {formData.startDate ? format(formData.startDate, "dd-MM-yyyy") : "dd-mm-yyyy"}
+                    {formData.startDate 
+                      ? format(formData.startDate, "dd-MM-yyyy") 
+                      : editingPatient && editingPatient.startDate 
+                        ? format(editingPatient.startDate, "dd-MM-yyyy")
+                        : "Select treatment start date"
+                    }
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -352,19 +558,18 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
                 type="number"
                 value={formData.totalFee}
                 onChange={(e) => setFormData(prev => ({ ...prev, totalFee: parseFloat(e.target.value) || 0 }))}
-                placeholder="0"
+                placeholder={editingPatient ? (editingPatient.totalFee ? `₹${editingPatient.totalFee?.toLocaleString()}` : "0") : "0"}
                 className="bg-background/50"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paidFee">Paid Fees (INR)</Label>
+              <Label htmlFor="remainingFee">Remaining Fee (INR)</Label>
               <Input
-                id="paidFee"
+                id="remainingFee"
                 type="number"
-                value={formData.paidFee}
-                onChange={(e) => setFormData(prev => ({ ...prev, paidFee: parseFloat(e.target.value) || 0 }))}
-                placeholder="0"
+                value={calculateDue()}
+                disabled
                 className="bg-background/50"
               />
             </div>
@@ -409,15 +614,28 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
                       alt={`Preview ${index + 1}`}
                       className="w-full h-24 object-cover rounded-lg border border-border"
                     />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeImage(index);
-                      }}
-                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+                    <div className="absolute top-1 left-1 right-1 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cropImage(img, index);
+                        }}
+                        className="bg-primary text-primary-foreground rounded-full p-1"
+                        title="Crop Image"
+                      >
+                        <Scissors className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeImage(index);
+                        }}
+                        className="bg-destructive text-destructive-foreground rounded-full p-1"
+                        title="Remove Image"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -565,6 +783,46 @@ export default function PatientForm({ open, onClose, onSubmit, editingPatient }:
             </Button>
             <Button onClick={addPayment} className="bg-gradient-primary hover:shadow-glow">
               Add Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Crop Dialog */}
+      <Dialog open={showCropDialog} onOpenChange={setShowCropDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] bg-card/95 backdrop-blur-xl border-border/50">
+          <DialogHeader>
+            <DialogTitle>Crop Image</DialogTitle>
+            <DialogDescription>
+              Adjust the crop area to select the portion of the image you want to keep.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {currentImageSrc && (
+              <ReactCrop
+                crop={crop}
+                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={1}
+                className="max-h-[400px]"
+              >
+                <img
+                  ref={imgRef}
+                  alt="Crop me"
+                  src={currentImageSrc}
+                  style={{ transform: 'scale(1) rotate(0deg)' }}
+                  onLoad={onImageLoad}
+                  className="max-h-[400px] w-auto"
+                />
+              </ReactCrop>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCropDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCropComplete} className="bg-gradient-primary hover:shadow-glow">
+              Apply Crop
             </Button>
           </DialogFooter>
         </DialogContent>

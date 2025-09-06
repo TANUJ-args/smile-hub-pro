@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Rocket, Sparkles } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import logoMain from '@/assets/smile-hub-logo.svg';
 
 export default function Hero() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -84,6 +85,15 @@ export default function Hero() {
       {/* Content */}
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center space-y-8 animate-fade-up">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <img 
+              src={logoMain} 
+              alt="SmileHub Family Dental" 
+              className="h-32 w-auto animate-float"
+            />
+          </div>
+
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 backdrop-blur-sm">
             <Sparkles className="w-4 h-4 text-primary" />
@@ -91,9 +101,9 @@ export default function Hero() {
           </div>
 
           {/* Heading */}
-          <h1 className="text-5xl md:text-7xl font-bold font-heading">
+          <h1 className="text-4xl md:text-6xl font-bold font-heading">
             <span className="bg-gradient-hero bg-clip-text text-transparent">
-              Smile Hub
+              Welcome to SmileHub
             </span>
           </h1>
 

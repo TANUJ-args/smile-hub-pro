@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Home, Users, Phone, LogIn, LogOut } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Menu, X, Home, Users, Phone, LogIn, LogOut, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import logoNav from '@/assets/smile-hub-logo-nav.svg';
 
 interface NavigationProps {
   className?: string;
@@ -11,8 +13,9 @@ interface NavigationProps {
 export default function Navigation({ className }: NavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [user, setUser] = useState<{ fullName?: string; username?: string } | null>(null);
+  const { isAuthenticated, logout, token } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,48 +26,28 @@ export default function Navigation({ className }: NavigationProps) {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    // Check auth status
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const response = await fetch('/auth/user');
-      const data = await response.json();
-      
-      if (data.authenticated) {
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setUser(null);
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/auth');
   };
 
-  const handleLogout = async () => {
-    try {
-      const response = await fetch('/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        setUser(null);
-        window.location.reload();
+  const getUserDisplayName = () => {
+    if (token) {
+      try {
+        // Basic decoding to get email from JWT payload
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.email.split('@')[0];
+      } catch (e) {
+        return 'User';
       }
-    } catch (error) {
-      console.error('Logout error:', error);
     }
+    return 'Guest';
   };
 
   const navLinks = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/patients', label: 'Patients', icon: Users },
+    { href: '/xray-analysis', label: 'AI X-ray', icon: Zap },
     { href: '#contact', label: 'Contact', icon: Phone },
   ];
 
@@ -85,61 +68,46 @@ export default function Navigation({ className }: NavigationProps) {
             {/* Logo */}
             <Link 
               to="/" 
-              className="text-2xl font-bold font-heading bg-gradient-primary bg-clip-text text-transparent hover:scale-105 transition-transform"
+              className="flex items-center gap-3 hover:scale-105 transition-transform"
             >
-              Smile Hub
+              <img 
+                src={logoNav} 
+                alt="SmileHub Family Dental" 
+                className="h-10 w-auto"
+              />
             </Link>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-1">
               {navLinks.map(({ href, label, icon: Icon }) => {
-                const isActive = location.pathname === href || 
-                               (href === '/' && location.pathname === '/') ||
-                               (href === '/patients' && location.pathname === '/patients');
-                
+                const isActive = location.pathname === href;
                 return (
-                  <Link
-                    key={href}
-                    to={href}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300",
-                      isActive 
-                        ? "bg-primary text-primary-foreground shadow-glow" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {label}
-                  </Link>
+                  <Button key={href} asChild variant="ghost" className={cn(
+                    "text-muted-foreground hover:text-foreground",
+                    isActive && "text-foreground bg-primary/10"
+                  )}>
+                    <Link to={href} className="flex items-center gap-2">
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </Link>
+                  </Button>
                 );
               })}
             </div>
 
-            {/* Auth Section */}
-            <div className="hidden md:flex items-center gap-3">
-              {user ? (
+            {/* Auth Buttons */}
+            <div className="hidden md:flex items-center space-x-2">
+              {isAuthenticated() ? (
                 <>
-                  <span className="text-sm font-medium text-primary">
-                    Hello, {(user.fullName || user.username || 'User').toUpperCase()}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLogout}
-                    className="flex items-center gap-2"
-                  >
+                  <span className="text-sm text-muted-foreground">Hello, {getUserDisplayName()}</span>
+                  <Button onClick={handleLogout} variant="outline" size="sm" className="flex items-center gap-2">
                     <LogOut className="w-4 h-4" />
                     Logout
                   </Button>
                 </>
               ) : (
-                <Button
-                  variant="default"
-                  size="sm"
-                  asChild
-                  className="bg-gradient-primary hover:shadow-glow"
-                >
-                  <Link to="/login" className="flex items-center gap-2">
+                <Button asChild size="sm" className="bg-gradient-primary hover:shadow-glow">
+                  <Link to="/auth" className="flex items-center gap-2">
                     <LogIn className="w-4 h-4" />
                     Login
                   </Link>
@@ -148,62 +116,48 @@ export default function Navigation({ className }: NavigationProps) {
             </div>
 
             {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-muted/50 transition-colors"
-            >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
+              >
+                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
 
           {/* Mobile Menu */}
           {isOpen && (
-            <div className="md:hidden border-t border-border/50 px-6 py-4 space-y-2 animate-fade-in">
-              {navLinks.map(({ href, label, icon: Icon }) => {
-                const isActive = location.pathname === href;
-                
-                return (
-                  <Link
-                    key={href}
-                    to={href}
-                    onClick={() => setIsOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300",
-                      isActive 
-                        ? "bg-primary text-primary-foreground" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {label}
-                  </Link>
-                );
-              })}
-              
-              <div className="pt-4 border-t border-border/50">
-                {user ? (
-                  <div className="space-y-2">
-                    <p className="px-4 text-sm font-medium text-primary">
-                      {(user.fullName || user.username || 'User').toUpperCase()}
-                    </p>
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-300 w-full"
-                    >
-                      <LogOut className="w-5 h-5" />
-                      Logout
-                    </button>
-                  </div>
-                ) : (
-                  <Link
-                    to="/login"
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-primary-foreground transition-all duration-300"
-                  >
-                    <LogIn className="w-5 h-5" />
-                    Login
-                  </Link>
-                )}
+            <div className="md:hidden mt-2">
+              <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-card/90 backdrop-blur-lg rounded-lg border border-border/50">
+                {navLinks.map(({ href, label, icon: Icon }) => (
+                  <Button key={href} asChild variant="ghost" className="w-full justify-start">
+                    <Link to={href} onClick={() => setIsOpen(false)} className="flex items-center gap-3">
+                      <Icon className="w-5 h-5" />
+                      {label}
+                    </Link>
+                  </Button>
+                ))}
+                <div className="border-t border-border/50 pt-4">
+                  {isAuthenticated() ? (
+                    <>
+                      <div className="px-4 py-2 text-sm text-muted-foreground">
+                        Hello, {getUserDisplayName()}
+                      </div>
+                      <Button onClick={handleLogout} variant="ghost" className="w-full justify-start flex items-center gap-3">
+                        <LogOut className="w-5 h-5" />
+                        Logout
+                      </Button>
+                    </>
+                  ) : (
+                    <Button asChild variant="ghost" className="w-full justify-start">
+                      <Link to="/auth" onClick={() => setIsOpen(false)} className="flex items-center gap-3">
+                        <LogIn className="w-5 h-5" />
+                        Login / Register
+                      </Link>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}

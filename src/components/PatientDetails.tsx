@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import ReactCrop, { type Crop as CropType } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { 
   Phone, 
   Mail, 
@@ -23,6 +25,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 interface Payment {
   id: string;
@@ -33,15 +36,18 @@ interface Payment {
 }
 
 interface PatientData {
-  id: string;
+  id: number;
   name: string;
+  surname: string;
+  gender: string;
   mobile: string;
-  email: string;
+  age: number;
   treatmentType: string;
-  description: string;
+  chiefComplaint: string;   // renamed from description
+  diagnosis: string;        // new field
+  treatmentPlan: string;    // new field
   startDate: Date | undefined;
   totalFee: number;
-  paidFee: number;
   images: string[];
   payments: Payment[];
   createdAt: Date;
@@ -52,18 +58,31 @@ interface PatientDetailsProps {
   open: boolean;
   onClose: () => void;
   onEdit: () => void;
+  onRevertChanges?: () => void;
+  onPatientUpdate?: () => void; // Add this prop for updating parent state
 }
 
-export default function PatientDetails({ patient, open, onClose, onEdit }: PatientDetailsProps) {
+export default function PatientDetails({ patient, open, onClose, onEdit, onRevertChanges, onPatientUpdate }: PatientDetailsProps) {
   const [selectedImage, setSelectedImage] = useState<number>(0);
   const [imageTransform, setImageTransform] = useState({
     rotation: 0,
     flipped: false
   });
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [crop, setCrop] = useState<CropType>({
+    unit: '%',
+    width: 90,
+    height: 90,
+    x: 5,
+    y: 5
+  });
+  const [completedCrop, setCompletedCrop] = useState<any>();
+  const imgRef = useRef<HTMLImageElement>(null);
+  const { toast } = useToast();
 
   if (!patient) return null;
 
-  const totalPaid = patient.paidFee + patient.payments.reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = patient.payments.reduce((sum, p) => sum + p.amount, 0);
   const dueAmount = patient.totalFee - totalPaid;
 
   const nextImage = () => {
@@ -92,6 +111,170 @@ export default function PatientDetails({ patient, open, onClose, onEdit }: Patie
     setImageTransform({ rotation: 0, flipped: false });
   };
 
+  const openCropDialog = () => {
+    setShowCropDialog(true);
+  };
+
+  const closeCropDialog = () => {
+    setShowCropDialog(false);
+    setCrop({
+      unit: '%',
+      width: 90,
+      height: 90,
+      x: 5,
+      y: 5
+    });
+  };
+
+  const saveCroppedImage = async () => {
+    if (!completedCrop || !imgRef.current || !patient) {
+      toast({
+        title: "Error",
+        description: "Please select an area to crop",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Failed to get canvas context');
+
+      const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
+      const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
+
+      canvas.width = completedCrop.width * scaleX;
+      canvas.height = completedCrop.height * scaleY;
+
+      ctx.drawImage(
+        imgRef.current,
+        completedCrop.x * scaleX,
+        completedCrop.y * scaleY,
+        completedCrop.width * scaleX,
+        completedCrop.height * scaleY,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) throw new Error('Canvas is empty');
+        
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const croppedImageUrl = reader.result as string;
+          
+          try {
+            // Call backend API to update the image
+            const response = await fetch(`/api/patients/${patient.id}/images/${selectedImage}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ imageData: croppedImageUrl }),
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            
+            // Update the patient data with new images
+            if (onPatientUpdate) {
+              onPatientUpdate();
+            }
+            
+            toast({
+              title: "Success",
+              description: "Image cropped and saved successfully",
+            });
+            
+            closeCropDialog();
+          } catch (apiError) {
+            console.error('API Error:', apiError);
+            toast({
+              title: "Error",
+              description: `Failed to save cropped image: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`,
+              variant: "destructive"
+            });
+          }
+        };
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', 0.95);
+      
+    } catch (error) {
+      console.error('Error cropping image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to crop image",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteImage = async (imageIndex: number) => {
+    if (!patient) {
+      toast({
+        title: "Error",
+        description: "Patient data not available",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (patient.images.length <= 1) {
+      toast({
+        title: "Cannot delete",
+        description: "At least one image must remain",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Call backend API to delete the image
+      const response = await fetch(`/api/patients/${patient.id}/images/${imageIndex}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // Update the patient data with new images
+      if (onPatientUpdate) {
+        onPatientUpdate();
+      }
+      
+      // Adjust selected image if needed
+      if (selectedImage >= imageIndex && selectedImage > 0) {
+        setSelectedImage(selectedImage - 1);
+      } else if (selectedImage >= result.images.length) {
+        setSelectedImage(result.images.length - 1);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Image deleted successfully",
+      });
+      
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      toast({
+        title: "Error",
+        description: `Failed to delete image: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] bg-card/95 backdrop-blur-xl border-border/50">
@@ -100,13 +283,15 @@ export default function PatientDetails({ patient, open, onClose, onEdit }: Patie
             <span className="text-2xl font-heading bg-gradient-primary bg-clip-text text-transparent">
               Patient Details
             </span>
-            <Button 
-              onClick={onEdit}
-              size="sm"
-              className="bg-gradient-primary hover:shadow-glow"
-            >
-              Edit Patient
-            </Button>
+            <div className="flex space-x-2">
+              <Button 
+                onClick={onEdit}
+                size="sm"
+                className="bg-gradient-primary hover:shadow-glow"
+              >
+                Edit Patient
+              </Button>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -130,15 +315,21 @@ export default function PatientDetails({ patient, open, onClose, onEdit }: Patie
                     </Badge>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Phone className="w-4 h-4" />
                       <span>{patient.mobile}</span>
                     </div>
-                    {patient.email && (
+                    {patient.surname && (
                       <div className="flex items-center gap-2 text-muted-foreground">
-                        <Mail className="w-4 h-4" />
-                        <span>{patient.email}</span>
+                        <span className="font-medium">Surname:</span>
+                        <span>{patient.surname}</span>
+                      </div>
+                    )}
+                    {patient.gender && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <span className="font-medium">Gender:</span>
+                        <span>{patient.gender}</span>
                       </div>
                     )}
                     {patient.startDate && (
@@ -153,13 +344,40 @@ export default function PatientDetails({ patient, open, onClose, onEdit }: Patie
                     </div>
                   </div>
 
-                  {patient.description && (
+                  {patient.age && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="font-medium">Age:</span>
+                      <span>{patient.age}</span>
+                    </div>
+                  )}
+
+                  {patient.chiefComplaint && (
                     <div className="pt-4 border-t border-border/50">
                       <h4 className="font-medium mb-2 flex items-center gap-2">
                         <FileText className="w-4 h-4" />
-                        Description
+                        Chief Complaint
                       </h4>
-                      <p className="text-muted-foreground">{patient.description}</p>
+                      <p className="text-muted-foreground">{patient.chiefComplaint}</p>
+                    </div>
+                  )}
+                  
+                  {patient.diagnosis && (
+                    <div className="pt-4 border-t border-border/50">
+                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Diagnosis
+                      </h4>
+                      <p className="text-muted-foreground">{patient.diagnosis}</p>
+                    </div>
+                  )}
+                  
+                  {patient.treatmentPlan && (
+                    <div className="pt-4 border-t border-border/50">
+                      <h4 className="font-medium mb-2 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Treatment Plan
+                      </h4>
+                      <p className="text-muted-foreground">{patient.treatmentPlan}</p>
                     </div>
                   )}
                 </div>
@@ -172,7 +390,7 @@ export default function PatientDetails({ patient, open, onClose, onEdit }: Patie
                 <DollarSign className="w-4 h-4" />
                 Financial Summary
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Total Fee</p>
                   <p className="text-2xl font-semibold">₹{patient.totalFee.toLocaleString()}</p>
@@ -254,35 +472,67 @@ export default function PatientDetails({ patient, open, onClose, onEdit }: Patie
                       <Button
                         size="icon"
                         variant="secondary"
+                        onClick={openCropDialog}
+                        title="Crop Image"
+                      >
+                        <Crop className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
                         onClick={reset}
                         title="Reset"
                       >
                         <RefreshCw className="w-4 h-4" />
                       </Button>
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        onClick={() => deleteImage(selectedImage)}
+                        title="Delete Image"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
 
                   {/* Thumbnail Gallery */}
-                  <div className="grid grid-cols-6 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                     {patient.images.map((img, index) => (
-                      <button
+                      <div
                         key={index}
-                        onClick={() => {
-                          setSelectedImage(index);
-                          setImageTransform({ rotation: 0, flipped: false });
-                        }}
-                        className={`relative rounded-lg overflow-hidden border-2 transition-all ${
+                        className={`relative rounded-lg overflow-hidden border-2 transition-all group ${
                           selectedImage === index 
                             ? 'border-primary ring-2 ring-primary/50' 
                             : 'border-border hover:border-primary/50'
                         }`}
                       >
-                        <img
-                          src={img}
-                          alt={`Thumbnail ${index + 1}`}
-                          className="w-full h-20 object-cover"
-                        />
-                      </button>
+                        <button
+                          onClick={() => {
+                            setSelectedImage(index);
+                            setImageTransform({ rotation: 0, flipped: false });
+                          }}
+                          className="w-full h-full"
+                        >
+                          <img
+                            src={img}
+                            alt={`Thumbnail ${index + 1}`}
+                            className="w-full h-20 object-cover"
+                          />
+                        </button>
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteImage(index);
+                          }}
+                          title="Delete Image"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -299,17 +549,16 @@ export default function PatientDetails({ patient, open, onClose, onEdit }: Patie
             <Card className="p-6 bg-background/50">
               <h4 className="font-medium mb-4">Payment History</h4>
               
-              {/* Initial Payment */}
-              {patient.paidFee > 0 && (
+              {/* Start Date */}
+              {patient.startDate && (
                 <div className="mb-4 p-4 rounded-lg bg-background/50 border border-border/50">
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="font-medium">Initial Payment</p>
+                      <p className="font-medium">Treatment Started</p>
                       <p className="text-sm text-muted-foreground">
-                        {patient.startDate && format(patient.startDate, 'dd MMM yyyy')}
+                        {format(patient.startDate, 'dd MMM yyyy')}
                       </p>
                     </div>
-                    <p className="text-lg font-semibold text-success">₹{patient.paidFee.toLocaleString()}</p>
                   </div>
                 </div>
               )}
@@ -399,6 +648,43 @@ export default function PatientDetails({ patient, open, onClose, onEdit }: Patie
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      {/* Crop Image Dialog */}
+      <Dialog open={showCropDialog} onOpenChange={setShowCropDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Crop Image</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-center">
+              <ReactCrop
+                crop={crop}
+                onChange={(newCrop) => setCrop(newCrop)}
+                onComplete={(c) => setCompletedCrop(c)}
+                className="max-w-full"
+              >
+                <img
+                  ref={imgRef}
+                  src={patient.images[selectedImage]}
+                  alt="Crop preview"
+                  className="max-w-full max-h-[500px] object-contain"
+                  style={{
+                    transform: `rotate(${imageTransform.rotation}deg) ${imageTransform.flipped ? 'scaleX(-1)' : ''}`,
+                  }}
+                />
+              </ReactCrop>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={closeCropDialog}>
+                Cancel
+              </Button>
+              <Button onClick={saveCroppedImage}>
+                Save Cropped Image
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

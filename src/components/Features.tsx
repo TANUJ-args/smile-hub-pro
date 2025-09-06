@@ -1,4 +1,4 @@
-import { UserCheck, TrendingUp, Microscope, Shield, Clock, HeartHandshake } from 'lucide-react';
+import { UserCheck, TrendingUp, Microscope, Shield, Clock, HeartHandshake, Cpu } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 const features = [
@@ -15,9 +15,9 @@ const features = [
     gradient: 'from-accent to-accent-light'
   },
   {
-    icon: Microscope,
-    title: 'Secure Treatment Plans',
-    description: 'Track various dental treatments including orthodontics, prosthodontics, and specialized procedures with complete privacy.',
+    icon: Cpu,
+    title: 'AI-Powered X-Ray Analysis',
+    description: 'Coming Soon: Harness the power of AI to get instant insights from dental X-rays, helping you diagnose with greater accuracy.',
     gradient: 'from-secondary to-secondary-light'
   },
   {

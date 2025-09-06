@@ -1,5 +1,6 @@
 import { Mail, Phone, MapPin, Facebook, Twitter, Linkedin, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import logoNav from '@/assets/smile-hub-logo-nav.svg';
 
 export default function Footer() {
   return (
@@ -11,9 +12,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand Section */}
           <div className="space-y-4">
-            <h3 className="text-2xl font-bold font-heading bg-gradient-primary bg-clip-text text-transparent">
-              Smile Hub
-            </h3>
+            <div className="flex items-center gap-3">
+              <img 
+                src={logoNav} 
+                alt="SmileHub Family Dental" 
+                className="h-8 w-auto"
+              />
+            </div>
             <p className="text-muted-foreground">
               Professional dental management platform engineered with modern technology for exceptional patient care delivery.
             </p>
@@ -70,27 +75,27 @@ export default function Footer() {
             <h4 className="font-semibold text-lg">Contact Us</h4>
             <div className="space-y-3">
               <a 
-                href="mailto:support@smilehub.com"
+                href="mailto:screative845@gmail.com"
                 className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors duration-300 group"
               >
                 <div className="p-2 rounded-lg bg-muted/50 group-hover:bg-primary/10 transition-colors">
                   <Mail className="w-4 h-4" />
                 </div>
-                <span className="text-sm">support@smilehub.com</span>
+                <span className="text-sm">screative845@gmail.com</span>
               </a>
               
               <div className="flex items-center gap-3 text-muted-foreground">
                 <div className="p-2 rounded-lg bg-muted/50">
                   <Phone className="w-4 h-4" />
                 </div>
-                <span className="text-sm">+1 (555) 123-4567</span>
+                <span className="text-sm">Contact via Email</span>
               </div>
               
               <div className="flex items-center gap-3 text-muted-foreground">
                 <div className="p-2 rounded-lg bg-muted/50">
                   <MapPin className="w-4 h-4" />
                 </div>
-                <span className="text-sm">123 Medical Plaza, Suite 100</span>
+                <span className="text-sm">Visakhapatnam, Andhra Pradesh</span>
               </div>
             </div>
           </div>

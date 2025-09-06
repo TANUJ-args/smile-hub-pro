@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <!-- Tooth shape with gradient -->
+  <defs>
+    <linearGradient id="toothGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A7F3D0;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#5EEAD4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2DD4BF;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0F766E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14B8A6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Tooth outline -->
+  <path d="M400 80 C320 80 280 120 280 180 C280 220 290 260 310 300 C330 340 360 380 400 420 C440 380 470 340 490 300 C510 260 520 220 520 180 C520 120 480 80 400 80 Z" 
+        fill="url(#toothGradient)" 
+        stroke="#0F766E" 
+        stroke-width="8"/>
+  
+  <!-- Left figure -->
+  <circle cx="340" cy="200" r="25" fill="none" stroke="#0F766E" stroke-width="6"/>
+  <path d="M340 225 L340 280 L320 320 L340 350 L360 320 L340 280" 
+        fill="none" 
+        stroke="#0F766E" 
+        stroke-width="6" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Right figure -->
+  <circle cx="460" cy="200" r="25" fill="none" stroke="#0F766E" stroke-width="6"/>
+  <path d="M460 225 L460 280 L480 320 L460 350 L440 320 L460 280" 
+        fill="none" 
+        stroke="#0F766E" 
+        stroke-width="6" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  
+  <!-- Handshake -->
+  <path d="M360 270 C380 260 420 260 440 270 C450 275 450 285 440 290 C420 300 380 300 360 290 C350 285 350 275 360 270" 
+        fill="none" 
+        stroke="#0F766E" 
+        stroke-width="6" 
+        stroke-linecap="round"/>
+  
+  <!-- Text -->
+  <text x="400" y="540" 
+        font-family="Arial, sans-serif" 
+        font-size="72" 
+        font-weight="bold" 
+        text-anchor="middle" 
+        fill="url(#textGradient)" 
+        letter-spacing="8px">SMILE HUB</text>
+  
+  <text x="400" y="620" 
+        font-family="Arial, sans-serif" 
+        font-size="48" 
+        font-weight="300" 
+        text-anchor="middle" 
+        fill="#0F766E" 
+        letter-spacing="12px">FAMILY DENTAL</text>
+</svg>
