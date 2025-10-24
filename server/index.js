@@ -28,9 +28,11 @@ if (process.env.NODE_ENV === 'production') {
 
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://smilehub-pro-frontend.onrender.com'] // Update with your actual frontend URL
-    : ['http://localhost:8080', 'http://localhost:8081'],
-  credentials: true
+    ? (process.env.CORS_ORIGIN || 'https://smilehub-pro-frontend.onrender.com')
+    : ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:5173'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '10mb' })); // Increased limit for image uploads
 
