@@ -18,7 +18,7 @@ import logoMain from '@/assets/smile-hub-logo.svg';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://smilehub-pro-backend.onrender.com' 
+  ? 'https://smile-hub-pro-backendvv.onrender.com' 
   : '';
 
 const API_ENDPOINTS = {

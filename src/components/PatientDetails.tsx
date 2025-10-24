@@ -10,7 +10,7 @@ import 'react-image-crop/dist/ReactCrop.css';
 
 // API Configuration
 const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://smilehub-pro-backend.onrender.com' 
+  ? 'https://smile-hub-pro-backendvv.onrender.com' 
   : '';
 
 const API_ENDPOINTS = {
