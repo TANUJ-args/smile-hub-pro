@@ -16,7 +16,9 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+.env.production
 server/.env
+server/.env.production
 
 # Production builds
 build/
@@ -67,3 +69,21 @@ env/
 
 # AI Service Files
 ai-service/
+
+# Local development files - DO NOT PUSH
+server/smilehub.db
+server/*.db
+server/backup_*.db
+server/index-sqlite.js
+server/setup-database.js
+server/query-database.js
+server/db-manager.js
+server/test-api.js
+start-dev.bat
+check-status.bat
+test-production.ps1
+DEVELOPMENT_GUIDE.md
+SETUP_COMPLETE.md
+README_COMPLETE.md
+API_DOCUMENTATION.md
+DEPLOYMENT_GUIDE.md
